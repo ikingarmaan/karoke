@@ -32,12 +32,12 @@ A modern, high-aesthetic two-page web application featuring:
 ### Option 1: Open Directly in Browser
 You can open `index.html` directly in any web browser (Chrome, Safari, Firefox, Edge):
 ```bash
-open /Users/ikingarmaan/.gemini/antigravity/scratch/drive-music-player/index.html
+open /Users/ikingarmaan/Downloads/karoke/index.html
 ```
 
 ### Option 2: Run with Python's Local Web Server
 ```bash
-cd /Users/ikingarmaan/.gemini/antigravity/scratch/drive-music-player
+cd /Users/ikingarmaan/Downloads/karoke
 python3 -m http.server 8080
 ```
 Then visit:
@@ -87,7 +87,7 @@ python3 sync_drive.py "https://drive.google.com/file/d/YOUR_FILE_ID/view" "Song 
 ## 📁 File Structure
 
 ```
-drive-music-player/
+karoke/
 ├── index.html              # Main Home Page (Music Media Player)
 ├── contact.html            # Contact Page (Form, creator links, mini player)
 ├── css/
