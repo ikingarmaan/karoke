@@ -76,7 +76,7 @@ python3 app.py
 ```
 Then visit:
 - **Player:** [http://localhost:8080](http://localhost:8080)
-- **Contact:** [http://localhost:8080/contact](http://localhost:8080/contact)
+- **Contact Link:** [https://mohdarmaan.up.railway.app/contact](https://mohdarmaan.up.railway.app/contact)
 
 ---
 
@@ -101,14 +101,12 @@ karoke/
 ├── requirements.txt        # Production dependencies (Flask, Gunicorn)
 ├── .python-version         # Python version pin for Render (3.11.9)
 ├── index.html              # Main Home Page (Music Media Player)
-├── contact.html            # Contact Page (Form, creator links, mini player)
 ├── css/
 │   └── style.css           # Glassmorphism, animations, responsive styles
 ├── js/
 │   ├── player.js           # Playback engine, seeking, live auto-sync
 │   ├── playlist.js         # Fallback playlist data & URL converter
 │   ├── visualizer.js       # HTML5 Canvas spectrum visualizer
-│   └── contact.js          # Contact form handler & mini-player preview
 ├── sync_drive.py           # CLI sync tool for offline builds
 ├── playlist.json           # Cached JSON metadata of Drive tracks
 └── README.md               # Documentation & usage guide

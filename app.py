@@ -11,7 +11,7 @@ import ssl
 import time
 import json
 import urllib.request
-from flask import Flask, send_from_directory, jsonify, request, Response, stream_with_context
+from flask import Flask, send_from_directory, jsonify, request, Response, stream_with_context, redirect
 
 app = Flask(__name__, static_folder=".", static_url_path="")
 
@@ -143,7 +143,7 @@ def index():
 @app.route("/contact")
 @app.route("/contact.html")
 def contact():
-    return send_from_directory(".", "contact.html")
+    return redirect("https://mohdarmaan.up.railway.app/contact", code=302)
 
 @app.route("/healthz")
 def healthz():
