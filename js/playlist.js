@@ -11,7 +11,7 @@ function convertDriveUrlToStream(urlOrId) {
   if (!urlOrId) return "";
   const trimmed = urlOrId.trim();
 
-  if (trimmed.includes("export=download") || trimmed.endsWith(".mp3") || trimmed.endsWith(".m4a") || trimmed.endsWith(".wav")) {
+  if (trimmed.startsWith("/api/stream/")) {
     return trimmed;
   }
 
@@ -33,6 +33,10 @@ function convertDriveUrlToStream(urlOrId) {
   }
 
   if (fileId) {
+    // If running under a web server (HTTP/HTTPS), prefer the stream proxy to bypass browser CORP blocks
+    if (typeof window !== "undefined" && window.location && window.location.protocol.startsWith("http")) {
+      return `/api/stream/${fileId}`;
+    }
     return `https://docs.google.com/uc?export=download&id=${fileId}`;
   }
 
@@ -49,7 +53,10 @@ const DEFAULT_TRACKS = [
     "duration": "--:--",
     "cover": "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400&auto=format&fit=crop&q=80",
     "source": "Google Drive",
-    "url": "https://docs.google.com/uc?export=download&id=1KoiOcb7AsfPbRNfosS_Ov1gRV-RxP4Kk",
+    "url": (typeof window !== "undefined" && window.location && window.location.protocol.startsWith("http")) 
+             ? "/api/stream/1KoiOcb7AsfPbRNfosS_Ov1gRV-RxP4Kk" 
+             : "https://docs.google.com/uc?export=download&id=1KoiOcb7AsfPbRNfosS_Ov1gRV-RxP4Kk",
+    "directUrl": "https://docs.google.com/uc?export=download&id=1KoiOcb7AsfPbRNfosS_Ov1gRV-RxP4Kk",
     "driveId": "1KoiOcb7AsfPbRNfosS_Ov1gRV-RxP4Kk",
     "originalFile": "Glass Half Full - Young Stunners_ JJ47 _ Karaoke _ Instrumental(MP3_160K).mp3"
   }
@@ -88,6 +95,7 @@ function addGoogleDriveTrack(trackData) {
       cover: trackData.cover || "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=400&auto=format&fit=crop&q=80",
       source: "Google Drive",
       url: streamUrl,
+      directUrl: `https://docs.google.com/uc?export=download&id=${trackData.driveId || ''}`,
       driveOriginal: trackData.driveLink || trackData.url
     };
 

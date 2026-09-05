@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-KaraokePlayer - Flask Web Service with Live Google Drive Auto-Sync
-Designed for local execution and production deployment on Render.
+KaraokePlayer - Flask Web Service with Live Google Drive Auto-Sync & Stream Proxy
 Streams audio live directly from Google Drive without local file storage.
+Bypasses browser CORP (Cross-Origin-Resource-Policy) by streaming chunks directly to the browser.
 """
 
 import os
@@ -11,22 +11,21 @@ import ssl
 import time
 import json
 import urllib.request
-from flask import Flask, send_from_directory, jsonify, request
+from flask import Flask, send_from_directory, jsonify, request, Response, stream_with_context
 
 app = Flask(__name__, static_folder=".", static_url_path="")
 
-# Default target Google Drive folder (Karaoke songs)
+# Target Google Drive folder (Karaoke songs)
 DRIVE_FOLDER_ID = os.environ.get("DRIVE_FOLDER_ID", "1z92Bdm4MM8q-21Qd7VIlXWK0r5gK_Eqh")
 
-# In-memory cache for live folder tracks
-CACHE_TTL_SECONDS = 30  # Auto-refreshes every 30 seconds
+CACHE_TTL_SECONDS = 30
 cache = {
     "tracks": [],
     "last_fetched": 0
 }
 
 def clean_song_metadata(raw_filename: str):
-    """Parses clean title and artist from raw file name."""
+    """Parses clean title and artist from file name."""
     base = re.sub(r'\.(mp3|m4a|wav|ogg|flac|aac)$', '', raw_filename, flags=re.IGNORECASE)
     base = re.sub(r'\s*[\(\[](?:MP3|AAC|160K|320K|128K|_|\s|-)+[\)\]]', '', base, flags=re.IGNORECASE)
 
@@ -57,10 +56,8 @@ def fetch_live_drive_tracks(folder_id: str):
         print(f"[DriveSync] Error connecting to Google Drive: {e}")
         return []
 
-    # Attempt to extract the initial data blob
     ivd_match = re.search(r"window\['_DRIVE_ivd'\]\s*=\s*'((?:\\'|[^'])*)';", html)
     if not ivd_match:
-        # Fallback to data-id attributes in HTML
         data_ids = re.findall(r'data-id="([a-zA-Z0-9_-]{25,})"[^>]*?data-tooltip="([^"]+?)"', html)
         tracks = []
         for fid, tooltip in data_ids:
@@ -100,13 +97,14 @@ def create_track_record(file_id: str, title: str, artist: str, filename: str):
         "duration": "--:--",
         "cover": "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400&auto=format&fit=crop&q=80",
         "source": "Google Drive",
-        "url": f"https://docs.google.com/uc?export=download&id={file_id}",
+        # Use our same-origin streaming proxy to bypass Google CORP same-site restriction
+        "url": f"/api/stream/{file_id}",
+        "directUrl": f"https://docs.google.com/uc?export=download&id={file_id}",
         "driveId": file_id,
         "originalFile": filename
     }
 
 def get_current_tracks(force_refresh: bool = False):
-    """Retrieves tracks from cache or fetches live from Google Drive."""
     now = time.time()
     if not force_refresh and cache["tracks"] and (now - cache["last_fetched"]) < CACHE_TTL_SECONDS:
         return cache["tracks"]
@@ -116,7 +114,6 @@ def get_current_tracks(force_refresh: bool = False):
     if live_tracks:
         cache["tracks"] = live_tracks
         cache["last_fetched"] = now
-        # Update local playlist.json as a backup cache
         try:
             with open("playlist.json", "w", encoding="utf-8") as f:
                 json.dump(live_tracks, f, indent=2)
@@ -124,7 +121,6 @@ def get_current_tracks(force_refresh: bool = False):
             pass
         return live_tracks
 
-    # Fallback to local playlist.json if Google Drive temporarily throttles
     if not cache["tracks"]:
         try:
             if os.path.exists("playlist.json"):
@@ -160,7 +156,6 @@ def healthz():
 
 @app.route("/api/tracks")
 def api_tracks():
-    """Live tracks endpoint. Any new song added to the Drive folder is returned automatically!"""
     force = request.args.get("refresh", "").lower() in ["1", "true", "yes"]
     tracks = get_current_tracks(force_refresh=force)
     return jsonify({
@@ -170,6 +165,62 @@ def api_tracks():
         "cached_at": cache["last_fetched"],
         "tracks": tracks
     })
+
+@app.route("/api/stream/<file_id>")
+def stream_audio(file_id):
+    """
+    Streams audio live from Google Drive directly to the client.
+    Supports HTTP Range requests for instant seeking and scrubs.
+    Bypasses Google Drive 'Cross-Origin-Resource-Policy: same-site' browser blocks.
+    Zero audio bytes are saved to disk.
+    """
+    drive_url = f"https://drive.usercontent.google.com/download?id={file_id}&export=download"
+    range_header = request.headers.get("Range")
+
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    }
+    if range_header:
+        headers["Range"] = range_header
+
+    ctx = ssl._create_unverified_context()
+    req = urllib.request.Request(drive_url, headers=headers)
+
+    try:
+        remote_resp = urllib.request.urlopen(req, context=ctx, timeout=20)
+        status_code = remote_resp.status
+        content_type = remote_resp.headers.get("Content-Type", "audio/mpeg")
+        content_length = remote_resp.headers.get("Content-Length")
+        content_range = remote_resp.headers.get("Content-Range")
+        accept_ranges = remote_resp.headers.get("Accept-Ranges", "bytes")
+
+        def generate():
+            try:
+                while True:
+                    chunk = remote_resp.read(64 * 1024)
+                    if not chunk:
+                        break
+                    yield chunk
+            finally:
+                remote_resp.close()
+
+        res_headers = {
+            "Content-Type": content_type,
+            "Accept-Ranges": accept_ranges,
+            "Access-Control-Allow-Origin": "*",
+            "Content-Disposition": "inline"
+        }
+        if content_length:
+            res_headers["Content-Length"] = content_length
+        if content_range:
+            res_headers["Content-Range"] = content_range
+
+        return Response(stream_with_context(generate()), status=status_code, headers=res_headers)
+
+    except urllib.error.HTTPError as e:
+        return jsonify({"error": "Google Drive Stream Error", "details": str(e)}), e.code
+    except Exception as e:
+        return jsonify({"error": "Streaming Error", "details": str(e)}), 500
 
 @app.route("/<path:path>")
 def serve_static(path):

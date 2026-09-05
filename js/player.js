@@ -1,5 +1,5 @@
 /**
- * Core Media Player Engine with Live Google Drive Auto-Sync
+ * Core Media Player Engine with Live Google Drive Auto-Sync & Stream Proxy
  * Controls playback, dynamic folder updates, UI state, seeking, and Drive track additions.
  */
 
@@ -7,6 +7,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // Audio Element
   const audio = new Audio();
   audio.preload = "metadata";
+  audio.crossOrigin = "anonymous";
 
   // Player Elements
   const vinylDisc = document.getElementById("vinyl-disc");
@@ -139,7 +140,13 @@ document.addEventListener("DOMContentLoaded", () => {
     currentIndex = index;
     const currentTrack = tracks[currentIndex];
 
-    audio.src = currentTrack.url;
+    // Determine target URL (prefer proxy if on web server)
+    let streamUrl = currentTrack.url;
+    if (window.location && window.location.protocol.startsWith("http") && currentTrack.driveId) {
+      streamUrl = `/api/stream/${currentTrack.driveId}`;
+    }
+
+    audio.src = streamUrl;
     audio.load();
 
     trackTitle.textContent = currentTrack.title;
@@ -170,7 +177,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Playback Control
   function playTrack() {
-    visualizer.initWebAudio();
+    try {
+      visualizer.initWebAudio();
+    } catch (e) {
+      console.warn("Visualizer init passed:", e);
+    }
+
     audio.play()
       .then(() => {
         isPlaying = true;
@@ -181,7 +193,7 @@ document.addEventListener("DOMContentLoaded", () => {
         renderPlaylist(searchInput.value);
       })
       .catch(err => {
-        console.warn("Playback stream note:", err);
+        console.warn("Audio play() interrupted:", err);
       });
   }
 
@@ -254,6 +266,25 @@ document.addEventListener("DOMContentLoaded", () => {
       nextTrack();
     } else {
       pauseTrack();
+    }
+  });
+
+  // Audio Error Handling & Auto-Recovery
+  audio.addEventListener("error", (e) => {
+    console.error("Audio playback error:", audio.error, e);
+    const currentTrack = tracks[currentIndex];
+    if (currentTrack) {
+      // If stream proxy fails, fallback to direct Google Drive download endpoint
+      if (audio.src.includes("/api/stream/") && currentTrack.directUrl) {
+        console.warn("Retrying with direct Google Drive URL:", currentTrack.directUrl);
+        audio.src = currentTrack.directUrl;
+        audio.play().catch(err => console.error("Direct fallback failed:", err));
+      } else if (!audio.src.includes("/api/stream/") && currentTrack.driveId) {
+        // Vice versa: if direct failed, try proxy
+        console.warn("Retrying with proxy URL:", `/api/stream/${currentTrack.driveId}`);
+        audio.src = `/api/stream/${currentTrack.driveId}`;
+        audio.play().catch(err => console.error("Proxy fallback failed:", err));
+      }
     }
   });
 
@@ -350,7 +381,6 @@ document.addEventListener("DOMContentLoaded", () => {
           const currentIds = tracks.map(t => t.driveId || t.id).join(",");
           const newIds = data.tracks.map(t => t.driveId || t.id).join(",");
 
-          // If new songs were added on Google Drive, update the playlist live!
           if (currentIds !== newIds || force) {
             console.log(`[DriveSync] Live update: found ${data.tracks.length} track(s) in Google Drive folder!`);
             const currentTrackId = tracks[currentIndex] ? (tracks[currentIndex].driveId || tracks[currentIndex].id) : null;
@@ -370,7 +400,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       }
     } catch (e) {
-      // Graceful offline fallback
+      // Graceful fallback
     } finally {
       if (btnRefreshDrive) {
         setTimeout(() => btnRefreshDrive.classList.remove("spinning"), 600);
@@ -383,7 +413,7 @@ document.addEventListener("DOMContentLoaded", () => {
     btnRefreshDrive.addEventListener("click", () => syncLiveDriveTracks(true));
   }
 
-  // Auto-poll Google Drive folder every 30 seconds for newly added songs
+  // Auto-poll Google Drive folder every 30 seconds
   setInterval(() => {
     syncLiveDriveTracks(false);
   }, 30000);
