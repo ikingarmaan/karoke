@@ -1,17 +1,18 @@
 # KaraokePlayer 🎧 — Google Drive Cloud Music Player & Contact Site
 
-A modern, high-aesthetic two-page web application designed to stream karaoke and music tracks directly from Google Drive:
-1. **Home Page (`index.html`)**: A complete music media player streaming audio live from your Google Drive folder.
-2. **Contact Page (`contact.html`)**: An interactive contact page with a message form, social badges, and a floating mini-player.
+A modern, high-aesthetic web application designed to stream karaoke and music tracks directly from your Google Drive folder:
+1. **Home Page (`/` / `index.html`)**: A complete music media player streaming audio live from your Google Drive folder with live auto-sync.
+2. **Contact Page (`/contact` / `contact.html`)**: An interactive contact page with a message form, social badges, and a floating mini-player.
 
 > **Connected Google Drive Folder:** [Karaoke songs](https://drive.google.com/drive/folders/1z92Bdm4MM8q-21Qd7VIlXWK0r5gK_Eqh) (`1z92Bdm4MM8q-21Qd7VIlXWK0r5gK_Eqh`)
 > **Zero Audio Download:** No songs are stored locally on disk; every track streams directly on demand from Google Drive.
+> **Live Auto-Sync:** Any new song added to the Google Drive folder appears automatically on the site!
 
 ---
 
 ## ✨ Features
 
-- ☁️ **Direct Google Drive Streaming Engine**: Converts Google Drive file IDs into streaming endpoints with zero local file downloads.
+- ☁️ **Live Auto-Sync & Streaming**: Any song uploaded to your Google Drive folder is automatically detected and listed on the website live without manual rebuilding or local file storage.
 - 📀 **Animated Spinning Vinyl Record**: Dynamically rotates when audio is playing, featuring album artwork and vinyl grooves.
 - 📊 **Real-time Canvas Audio Spectrum**: Visualizer reacts to sound frequencies with glowing neon gradients.
 - 🎚️ **Full Playback Controls**:
@@ -22,48 +23,60 @@ A modern, high-aesthetic two-page web application designed to stream karaoke and
   - Volume slider and one-click mute (`M`)
 - 📋 **Karaoke Playlist Vault**:
   - Displays all songs from your Google Drive folder
-  - Instant search and song filtering
+  - Live search and song filtering
   - Equalizer animation on currently playing track
-  - Direct link to your Google Drive folder
-- 🔄 **1-Click Google Drive Folder Synchronizer**:
-  - Run `python3 sync_drive.py` anytime you add new songs to your Google Drive folder, and the site automatically updates!
-- ➕ **In-Browser "Add Drive Track" Modal**: Paste any Google Drive file link directly into the website to play immediately.
+  - One-click **Auto-Sync** button to instantly refresh
+- 🚀 **Render-Ready**: Native `render.yaml`, `Procfile`, and `requirements.txt` configured for 1-click cloud deployment.
 - 📱 **Fully Responsive**: Optimized for desktop, tablet, and mobile browsers.
-- 📬 **Interactive Contact Page**: Form validation, feedback alerts, creator social links, and bottom sticky mini-player.
+
+---
+
+## ☁️ How to Deploy on Render
+
+### Step 1: Open Render Dashboard
+1. Go to [dashboard.render.com](https://dashboard.render.com).
+2. Click **New +** → **Web Service** (or **Blueprint** to use `render.yaml`).
+
+### Step 2: Connect Your GitHub Repository
+1. Select your repository: **`ikingarmaan/karoke`**.
+2. Render automatically recognizes `render.yaml`!
+   *(Or fill in the settings manually if creating a standard Web Service):*
+   - **Environment:** `Python`
+   - **Build Command:** `pip install --upgrade pip && pip install -r requirements.txt`
+   - **Start Command:** `python -m gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 60`
+   - **Health Check Path:** `/healthz`
+   - **Plan:** Free
+
+### Step 3: Click Deploy 🎉
+Your site will be live on your personal Render URL (e.g. `https://karoke-xxxx.onrender.com`) in ~60 seconds!
+
+---
+
+## 🔄 How Auto-Sync Works
+
+Your site is configured with a backend API endpoint (`/api/tracks`) that connects directly to your Google Drive folder:
+`https://drive.google.com/drive/folders/1z92Bdm4MM8q-21Qd7VIlXWK0r5gK_Eqh`
+
+### When You Add New Songs to Google Drive:
+1. Upload your audio file (`.mp3`, `.m4a`, `.wav`, `.ogg`) into your Google Drive folder.
+2. Ensure the file sharing is set to **"Anyone with the link can view"**.
+3. **That's it!**
+   - When visitors open or refresh the site, the new songs appear automatically.
+   - The player also checks every 30 seconds in the background and updates the song list live!
+   - You can also click the **Auto-Sync** button on the page for an instant refresh.
 
 ---
 
 ## 🚀 How to Run Locally
 
-### Option 1: Open Directly in Browser
-```bash
-open /Users/ikingarmaan/Downloads/karoke/index.html
-```
-
-### Option 2: Run with Python's Local Web Server
+### Start Local Python Server:
 ```bash
 cd /Users/ikingarmaan/Downloads/karoke
-python3 -m http.server 8080
+python3 app.py
 ```
 Then visit:
-- **Player:** [http://localhost:8080/index.html](http://localhost:8080/index.html)
-- **Contact Page:** [http://localhost:8080/contact.html](http://localhost:8080/contact.html)
-
----
-
-## 📂 Synchronizing Songs from Google Drive
-
-Your site is connected to:
-`https://drive.google.com/drive/folders/1z92Bdm4MM8q-21Qd7VIlXWK0r5gK_Eqh`
-
-### When You Add New Songs to Your Google Drive Folder:
-1. Upload your `.mp3`, `.m4a`, `.wav`, or `.ogg` audio files to the folder in Google Drive.
-2. In your terminal, run:
-   ```bash
-   cd /Users/ikingarmaan/Downloads/karoke
-   python3 sync_drive.py
-   ```
-3. The script scans your Google Drive folder, formats the song names, updates `js/playlist.js`, and makes all new tracks immediately playable on the website!
+- **Player:** [http://localhost:8080](http://localhost:8080)
+- **Contact:** [http://localhost:8080/contact](http://localhost:8080/contact)
 
 ---
 
@@ -82,16 +95,21 @@ Your site is connected to:
 
 ```
 karoke/
+├── app.py                  # Flask web service with live Google Drive auto-sync
+├── render.yaml             # Render infrastructure blueprint
+├── Procfile                # Gunicorn process manager for Render
+├── requirements.txt        # Production dependencies (Flask, Gunicorn)
+├── .python-version         # Python version pin for Render (3.11.9)
 ├── index.html              # Main Home Page (Music Media Player)
 ├── contact.html            # Contact Page (Form, creator links, mini player)
 ├── css/
 │   └── style.css           # Glassmorphism, animations, responsive styles
 ├── js/
-│   ├── playlist.js         # Connected Google Drive playlist configuration
-│   ├── player.js           # Playback engine, seeking, controls, shortcuts
+│   ├── player.js           # Playback engine, seeking, live auto-sync
+│   ├── playlist.js         # Fallback playlist data & URL converter
 │   ├── visualizer.js       # HTML5 Canvas spectrum visualizer
 │   └── contact.js          # Contact form handler & mini-player preview
-├── sync_drive.py           # Automated Google Drive folder synchronizer
+├── sync_drive.py           # CLI sync tool for offline builds
 ├── playlist.json           # Cached JSON metadata of Drive tracks
 └── README.md               # Documentation & usage guide
 ```
