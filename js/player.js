@@ -340,11 +340,12 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // Seeking
+  // Seeking (Mouse & Mobile Touch Support)
   let isSeeking = false;
   function handleSeek(e) {
+    const clientX = e.touches && e.touches.length > 0 ? e.touches[0].clientX : e.clientX;
     const rect = progressBarWrapper.getBoundingClientRect();
-    const clickX = e.clientX - rect.left;
+    const clickX = clientX - rect.left;
     const width = rect.width;
     const clampedPercent = Math.max(0, Math.min(1, clickX / width));
     if (audio.duration) {
@@ -354,6 +355,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  // Mouse events
   progressBarWrapper.addEventListener("mousedown", (e) => {
     isSeeking = true;
     handleSeek(e);
@@ -364,6 +366,20 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   window.addEventListener("mouseup", () => {
+    isSeeking = false;
+  });
+
+  // Mobile Touch events
+  progressBarWrapper.addEventListener("touchstart", (e) => {
+    isSeeking = true;
+    handleSeek(e);
+  }, { passive: true });
+
+  window.addEventListener("touchmove", (e) => {
+    if (isSeeking) handleSeek(e);
+  }, { passive: true });
+
+  window.addEventListener("touchend", () => {
     isSeeking = false;
   });
 
