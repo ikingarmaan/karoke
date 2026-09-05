@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """
-KaraokePlayer - Flask Web Service with Live Google Drive Auto-Sync & Stream Proxy
+KaraokePlayer - Flask Web Service with Live Google Drive Auto-Sync, Stream Proxy & Dynamic Album Art
 Streams audio live directly from Google Drive without local file storage.
-Bypasses browser CORP (Cross-Origin-Resource-Policy) by streaming chunks directly to the browser.
 """
 
 import os
@@ -10,6 +9,7 @@ import re
 import ssl
 import time
 import json
+import random
 import urllib.request
 from flask import Flask, send_from_directory, jsonify, request, Response, stream_with_context, redirect
 
@@ -24,18 +24,53 @@ cache = {
     "last_fetched": 0
 }
 
+# Curated high-resolution aesthetic music album artworks from the internet
+RANDOM_ALBUM_COVERS = [
+    "https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=800&auto=format&fit=crop&q=85",
+    "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800&auto=format&fit=crop&q=85",
+    "https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=800&auto=format&fit=crop&q=85",
+    "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800&auto=format&fit=crop&q=85",
+    "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=800&auto=format&fit=crop&q=85",
+    "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800&auto=format&fit=crop&q=85",
+    "https://images.unsplash.com/photo-1501386761578-eac5c94b800a?w=800&auto=format&fit=crop&q=85",
+    "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=800&auto=format&fit=crop&q=85",
+    "https://images.unsplash.com/photo-1511379938547-c1f69419868d?w=800&auto=format&fit=crop&q=85",
+    "https://images.unsplash.com/photo-1526478806334-5fd488fcaabc?w=800&auto=format&fit=crop&q=85",
+    "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&auto=format&fit=crop&q=85",
+    "https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=800&auto=format&fit=crop&q=85",
+    "https://images.unsplash.com/photo-1483412033650-1015ddeb83d1?w=800&auto=format&fit=crop&q=85",
+    "https://images.unsplash.com/photo-1506157786151-b8491531f063?w=800&auto=format&fit=crop&q=85",
+    "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=800&auto=format&fit=crop&q=85"
+]
+
+def get_album_cover_for_track(identifier: str):
+    """Deterministically maps a song title or ID to a gorgeous album cover from the internet."""
+    h = sum(ord(c) for c in identifier)
+    return RANDOM_ALBUM_COVERS[h % len(RANDOM_ALBUM_COVERS)]
+
 def clean_song_metadata(raw_filename: str):
     """Parses clean title and artist from file name."""
     base = re.sub(r'\.(mp3|m4a|wav|ogg|flac|aac)$', '', raw_filename, flags=re.IGNORECASE)
     base = re.sub(r'\s*[\(\[](?:MP3|AAC|160K|320K|128K|_|\s|-)+[\)\]]', '', base, flags=re.IGNORECASE)
 
-    parts = re.split(r'\s*[-_]\s*', base)
-    if len(parts) >= 2:
-        title = parts[0].strip()
-        artist = " ".join([p.strip() for p in parts[1:] if p.strip()])
-        if re.search(r'karaoke|instrumental', artist, re.IGNORECASE):
-            artist_clean = re.sub(r'\b(karaoke|instrumental)\b', '', artist, flags=re.IGNORECASE).strip(" _-")
-            return f"{title} (Karaoke Instrumental)", (artist_clean or "Karaoke Edition")
+    noise = [r'sing along lyrics', r'with lyrics', r'lyrics', r'official audio', r'version', r'jhokay']
+    for n in noise:
+        base = re.sub(n, '', base, flags=re.IGNORECASE)
+
+    parts = [p.strip() for p in re.split(r'\s*[-_]\s*', base) if p.strip()]
+    if parts:
+        title = parts[0]
+        remaining = []
+        is_karaoke = False
+        for p in parts[1:]:
+            if re.search(r'karaoke|instrumental|sing along|lyrics|jhokay|official|version', p, re.IGNORECASE):
+                is_karaoke = True
+            else:
+                remaining.append(p)
+
+        artist = ', '.join(remaining) if remaining else 'Karaoke Artist'
+        if is_karaoke or 'karaoke' in raw_filename.lower():
+            title = f"{title} (Karaoke Instrumental)"
         return title, artist
 
     return base.strip(), "Karaoke Artist"
@@ -89,15 +124,15 @@ def fetch_live_drive_tracks(folder_id: str):
     return tracks
 
 def create_track_record(file_id: str, title: str, artist: str, filename: str):
+    cover_art = get_album_cover_for_track(file_id + title)
     return {
         "id": f"drive-{file_id[:12]}",
         "title": title,
         "artist": artist,
         "album": "Google Drive Karaoke",
         "duration": "--:--",
-        "cover": "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400&auto=format&fit=crop&q=80",
+        "cover": cover_art,
         "source": "Google Drive",
-        # Use our same-origin streaming proxy to bypass Google CORP same-site restriction
         "url": f"/api/stream/{file_id}",
         "directUrl": f"https://docs.google.com/uc?export=download&id={file_id}",
         "driveId": file_id,
@@ -164,6 +199,13 @@ def api_tracks():
         "count": len(tracks),
         "cached_at": cache["last_fetched"],
         "tracks": tracks
+    })
+
+@app.route("/api/random-cover")
+def api_random_cover():
+    """Returns a fresh random high-resolution album cover URL from the internet."""
+    return jsonify({
+        "cover": random.choice(RANDOM_ALBUM_COVERS)
     })
 
 @app.route("/api/stream/<file_id>")

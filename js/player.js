@@ -1,6 +1,5 @@
 /**
- * Core Media Player Engine with Live Google Drive Auto-Sync & Stream Proxy
- * Controls playback, dynamic folder updates, UI state, seeking, and Drive track additions.
+ * Core Media Player Engine with Turntable Tonearm, Ambient Glow & Random Album Art
  */
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -9,13 +8,19 @@ document.addEventListener("DOMContentLoaded", () => {
   audio.preload = "metadata";
   audio.crossOrigin = "anonymous";
 
-  // Player Elements
+  // Turntable & Vinyl Elements
   const vinylDisc = document.getElementById("vinyl-disc");
   const vinylArt = document.getElementById("vinyl-art");
+  const tonearm = document.getElementById("tonearm");
+  const ambientGlow = document.getElementById("ambient-glow");
+  const btnRandomArt = document.getElementById("btn-random-art");
+
+  // Track Metadata Elements
   const trackTitle = document.getElementById("track-title");
   const trackArtist = document.getElementById("track-artist");
   const trackBadge = document.getElementById("track-badge");
 
+  // Control Buttons
   const btnPlay = document.getElementById("btn-play");
   const iconPlay = document.getElementById("icon-play");
   const iconPause = document.getElementById("icon-pause");
@@ -24,15 +29,18 @@ document.addEventListener("DOMContentLoaded", () => {
   const btnShuffle = document.getElementById("btn-shuffle");
   const btnRepeat = document.getElementById("btn-repeat");
 
+  // Progress Bar
   const progressBarWrapper = document.getElementById("progress-bar-wrapper");
   const progressBarFill = document.getElementById("progress-bar-fill");
   const progressScrubber = document.getElementById("progress-scrubber");
   const timeCurrent = document.getElementById("time-current");
   const timeTotal = document.getElementById("time-total");
 
+  // Volume
   const volumeSlider = document.getElementById("volume-slider");
   const btnVolume = document.getElementById("btn-volume");
 
+  // Playlist Elements
   const trackListContainer = document.getElementById("track-list");
   const trackCountBadge = document.getElementById("track-count");
   const searchInput = document.getElementById("playlist-search");
@@ -45,6 +53,25 @@ document.addEventListener("DOMContentLoaded", () => {
   const btnCloseModal = document.getElementById("btn-close-modal");
   const formAddDrive = document.getElementById("form-add-drive");
 
+  // Curated High-Res Album Artworks from Internet
+  const CURATED_COVERS = [
+    "https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=800&auto=format&fit=crop&q=85",
+    "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800&auto=format&fit=crop&q=85",
+    "https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=800&auto=format&fit=crop&q=85",
+    "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800&auto=format&fit=crop&q=85",
+    "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=800&auto=format&fit=crop&q=85",
+    "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800&auto=format&fit=crop&q=85",
+    "https://images.unsplash.com/photo-1501386761578-eac5c94b800a?w=800&auto=format&fit=crop&q=85",
+    "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=800&auto=format&fit=crop&q=85",
+    "https://images.unsplash.com/photo-1511379938547-c1f69419868d?w=800&auto=format&fit=crop&q=85",
+    "https://images.unsplash.com/photo-1526478806334-5fd488fcaabc?w=800&auto=format&fit=crop&q=85",
+    "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&auto=format&fit=crop&q=85",
+    "https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=800&auto=format&fit=crop&q=85",
+    "https://images.unsplash.com/photo-1483412033650-1015ddeb83d1?w=800&auto=format&fit=crop&q=85",
+    "https://images.unsplash.com/photo-1506157786151-b8491531f063?w=800&auto=format&fit=crop&q=85",
+    "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=800&auto=format&fit=crop&q=85"
+  ];
+
   // Visualizer
   const visualizerCanvas = document.getElementById("visualizer-canvas");
   const visualizer = new AudioVisualizer(visualizerCanvas, audio);
@@ -54,7 +81,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let currentIndex = 0;
   let isPlaying = false;
   let isShuffle = false;
-  let repeatMode = "all"; // 'none' | 'all' | 'one'
+  let repeatMode = "all";
   let lastVolume = 0.85;
 
   // Initialize Volume
@@ -87,8 +114,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (filtered.length === 0) {
       trackListContainer.innerHTML = `
-        <li style="text-align: center; padding: 2rem; color: var(--text-muted); font-size: 0.9rem;">
-          No matching tracks found.
+        <li style="text-align: center; padding: 2.5rem 1rem; color: var(--text-muted); font-size: 0.92rem;">
+          No matching tracks found in your vault.
         </li>
       `;
       return;
@@ -110,7 +137,7 @@ document.addEventListener("DOMContentLoaded", () => {
           <div class="eq-bar"></div>
           <div class="eq-bar"></div>
         </div>
-        <img class="track-thumb" src="${track.cover}" alt="${track.title}" onerror="this.src='https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=200&auto=format&fit=crop&q=80'">
+        <img class="track-thumb" src="${track.cover}" alt="${track.title}" onerror="this.src='${CURATED_COVERS[0]}'">
         <div class="track-details">
           <div class="track-name">${track.title}</div>
           <div class="track-meta-row">
@@ -151,7 +178,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     trackTitle.textContent = currentTrack.title;
     trackArtist.textContent = currentTrack.artist;
-    trackBadge.textContent = currentTrack.source || "Google Drive";
+    trackBadge.textContent = currentTrack.source || "Google Drive Live";
     vinylArt.src = currentTrack.cover;
 
     // Reset progress
@@ -180,13 +207,15 @@ document.addEventListener("DOMContentLoaded", () => {
     try {
       visualizer.initWebAudio();
     } catch (e) {
-      console.warn("Visualizer init passed:", e);
+      console.warn("Visualizer init note:", e);
     }
 
     audio.play()
       .then(() => {
         isPlaying = true;
         vinylDisc.classList.add("playing");
+        if (tonearm) tonearm.classList.add("playing");
+        if (ambientGlow) ambientGlow.classList.add("active");
         iconPlay.style.display = "none";
         iconPause.style.display = "block";
         visualizer.start();
@@ -201,6 +230,8 @@ document.addEventListener("DOMContentLoaded", () => {
     audio.pause();
     isPlaying = false;
     vinylDisc.classList.remove("playing");
+    if (tonearm) tonearm.classList.remove("playing");
+    if (ambientGlow) ambientGlow.classList.remove("active");
     iconPlay.style.display = "block";
     iconPause.style.display = "none";
     visualizer.stop();
@@ -245,6 +276,29 @@ document.addEventListener("DOMContentLoaded", () => {
     playTrack();
   }
 
+  // Randomize Album Cover Art Feature
+  if (btnRandomArt) {
+    btnRandomArt.addEventListener("click", () => {
+      // Pick random cover
+      let currentCover = vinylArt.src;
+      let newCover;
+      do {
+        newCover = CURATED_COVERS[Math.floor(Math.random() * CURATED_COVERS.length)];
+      } while (CURATED_COVERS.length > 1 && newCover === currentCover);
+
+      // Subtle rotation animation on vinyl art
+      vinylArt.style.transform = "scale(0.85) rotate(15deg)";
+      setTimeout(() => {
+        vinylArt.src = newCover;
+        if (tracks[currentIndex]) {
+          tracks[currentIndex].cover = newCover;
+        }
+        vinylArt.style.transform = "scale(1) rotate(0deg)";
+        renderPlaylist(searchInput.value);
+      }, 200);
+    });
+  }
+
   // Audio Event Listeners
   audio.addEventListener("timeupdate", () => {
     if (!audio.duration) return;
@@ -274,13 +328,11 @@ document.addEventListener("DOMContentLoaded", () => {
     console.error("Audio playback error:", audio.error, e);
     const currentTrack = tracks[currentIndex];
     if (currentTrack) {
-      // If stream proxy fails, fallback to direct Google Drive download endpoint
       if (audio.src.includes("/api/stream/") && currentTrack.directUrl) {
         console.warn("Retrying with direct Google Drive URL:", currentTrack.directUrl);
         audio.src = currentTrack.directUrl;
         audio.play().catch(err => console.error("Direct fallback failed:", err));
       } else if (!audio.src.includes("/api/stream/") && currentTrack.driveId) {
-        // Vice versa: if direct failed, try proxy
         console.warn("Retrying with proxy URL:", `/api/stream/${currentTrack.driveId}`);
         audio.src = `/api/stream/${currentTrack.driveId}`;
         audio.play().catch(err => console.error("Proxy fallback failed:", err));
@@ -446,7 +498,7 @@ document.addEventListener("DOMContentLoaded", () => {
       title: title || "My Drive Track",
       artist: artist || "Cloud Audio",
       driveLink: link,
-      cover: cover || "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400&auto=format&fit=crop&q=80"
+      cover: cover || CURATED_COVERS[Math.floor(Math.random() * CURATED_COVERS.length)]
     });
 
     if (newTrack) {

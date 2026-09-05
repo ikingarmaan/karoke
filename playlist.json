@@ -1,13 +1,27 @@
 [
   {
-    "id": "drive-1KoiOcb7AsfP",
-    "title": "Glass Half Full (Karaoke Instrumental)",
-    "artist": "Young Stunners JJ47",
+    "id": "drive-1AMU7HfU6aCB",
+    "title": "Baaz (Karaoke Instrumental)",
+    "artist": "JJ47, Talhah Yunus, Talha Anjum",
     "album": "Google Drive Karaoke",
     "duration": "--:--",
-    "cover": "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400&auto=format&fit=crop&q=80",
+    "cover": "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=800&auto=format&fit=crop&q=85",
     "source": "Google Drive",
-    "url": "https://docs.google.com/uc?export=download&id=1KoiOcb7AsfPbRNfosS_Ov1gRV-RxP4Kk",
+    "url": "/api/stream/1AMU7HfU6aCBXAEaxU79knzm67Hi-KbkA",
+    "directUrl": "https://docs.google.com/uc?export=download&id=1AMU7HfU6aCBXAEaxU79knzm67Hi-KbkA",
+    "driveId": "1AMU7HfU6aCBXAEaxU79knzm67Hi-KbkA",
+    "originalFile": "Baaz - JJ47 _ Talhah Yunus _ Talha Anjum _ Karaoke_Instrumental Version _ Sing along lyrics _ Jhokay(MP3_160K).mp3"
+  },
+  {
+    "id": "drive-1KoiOcb7AsfP",
+    "title": "Glass Half Full (Karaoke Instrumental)",
+    "artist": "Young Stunners, JJ47",
+    "album": "Google Drive Karaoke",
+    "duration": "--:--",
+    "cover": "https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=800&auto=format&fit=crop&q=85",
+    "source": "Google Drive",
+    "url": "/api/stream/1KoiOcb7AsfPbRNfosS_Ov1gRV-RxP4Kk",
+    "directUrl": "https://docs.google.com/uc?export=download&id=1KoiOcb7AsfPbRNfosS_Ov1gRV-RxP4Kk",
     "driveId": "1KoiOcb7AsfPbRNfosS_Ov1gRV-RxP4Kk",
     "originalFile": "Glass Half Full - Young Stunners_ JJ47 _ Karaoke _ Instrumental(MP3_160K).mp3"
   }
